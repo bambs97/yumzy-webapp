@@ -3,6 +3,6 @@
   publish = "dist"
 
 [[redirects]]
-  from = "/r/yummo-rouen"
+  from = "/r/*"
   to = "/index.html"
   status = 200
