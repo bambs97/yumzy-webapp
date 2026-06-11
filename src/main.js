@@ -91,6 +91,7 @@ function renderRestaurant() {
 
   renderReviewSummary();
   renderDishes();
+  document.body.classList.remove("is-loading-restaurant");
 }
 
 function trackRestaurantView() {

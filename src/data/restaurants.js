@@ -29,12 +29,12 @@ export const restaurants = {
       {
         name: "Baos",
         note: "Nuage & Gourmandise",
-        image: "assets/yummo-baos.png"
+        image: "/assets/yummo-baos.png"
       },
       {
         name: "Raviolis / Bouchees",
         note: "Finesse & Explosion",
-        image: "assets/yummo-raviolis.png"
+        image: "/assets/yummo-raviolis.png"
       }
     ],
     infoValues: ["20-30 EUR", "Comfort food", "Entre amis"],
@@ -46,7 +46,7 @@ export const restaurants = {
     name: "Bistrot Saigon",
     title: "Bistrot Saigon - Yumzy",
     heroSub: "Street food vietnamienne - Paris",
-    heroImage: "assets/bistrot-saigon-hero.jpg",
+    heroImage: "/assets/bistrot-saigon-hero.jpg",
     rating: "4.7",
     ratingCount: "24 avis",
     trending: "Trending",
