@@ -1,3 +1,21 @@
+export const defaultRestaurantFields = {
+  heroImage: "/assets/yummo-hero.jpeg",
+  rating: "4.6",
+  ratingCount: "",
+  trending: "Tendance",
+  reviewSummary: {
+    title: "Resume IA des avis",
+    lines: [],
+    insight: ""
+  },
+  favoriteDishesTitle: "Les plats favoris",
+  favoriteDishesSubtitle: "Les plats que les clients recommandent le plus",
+  dishes: [],
+  infoValues: [],
+  cta: "J'y vais",
+  translations: {}
+};
+
 export const restaurants = {
   "yummo-rouen": {
     id: "yummo-rouen",
@@ -5,7 +23,7 @@ export const restaurants = {
     name: "YumM\u00f3",
     title: "YumM\u00f3 - Yumzy",
     heroSub: "Street food asiatique - Rouen",
-    heroImage: null,
+    heroImage: "/assets/yummo-hero.jpeg",
     rating: "4.6",
     ratingCount: "+400 avis",
     trending: "Tendance",
@@ -24,7 +42,8 @@ export const restaurants = {
     dishes: [
       {
         name: "Bouillon Mixian",
-        note: "Extase & Reconfort"
+        note: "Extase & Reconfort",
+        image: "/assets/yummo-bouillon-mixian.png"
       },
       {
         name: "Baos",
@@ -38,7 +57,32 @@ export const restaurants = {
       }
     ],
     infoValues: ["20-30 EUR", "Comfort food", "Entre amis"],
-    cta: "J'y vais"
+    cta: "J'y vais",
+    translations: {
+      en: {
+        heroSub: "Asian street food - Rouen",
+        ratingCount: "+400 reviews",
+        trending: "Trending",
+        reviewSummary: {
+          title: "AI review summary",
+          lines: [
+            "YumM\u00f3 is a popular Chinese spot in Rouen for generous homemade dishes inspired by Shanghai and Xi'an.",
+            "Reviews often mention large portions, comforting flavors and a warm welcome.",
+            "Ideal for a quick lunch, a meal with friends or a serious comfort food craving at a fair price."
+          ],
+          insight: "The verdict: simple, authentic and very reliable."
+        },
+        favoriteDishesTitle: "Favorite dishes",
+        favoriteDishesSubtitle: "The dishes customers recommend most",
+        dishes: [
+          { name: "Mixian broth", note: "Comforting & rich", image: "/assets/yummo-bouillon-mixian.png" },
+          { name: "Baos", note: "Soft & indulgent", image: "/assets/yummo-baos.png" },
+          { name: "Dumplings / bites", note: "Delicate & punchy", image: "/assets/yummo-raviolis.png" }
+        ],
+        infoValues: ["20-30 EUR", "Comfort food", "With friends"],
+        cta: "I'm going"
+      }
+    }
   },
   "bistrot-saigon-paris": {
     id: "bistrot-saigon-paris",
@@ -66,26 +110,91 @@ export const restaurants = {
       {
         name: "Bo Bun Royal",
         note: "Signature & Genereux",
-        image: "https://images.unsplash.com/photo-1604908176997-125f25cc500f?auto=format&fit=crop&w=800&q=80"
+        image: "/assets/bistrot-saigon-hero.jpg"
       },
       {
         name: "Nems maison",
-        note: "Croustillant & Fondant",
-        image: "https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&w=800&q=80"
+        note: "Croustillant & Fondant"
       },
       {
         name: "Pho",
-        note: "Bouillon & Herbes",
-        image: "https://images.unsplash.com/photo-1604908811879-0a021d7d65aa?auto=format&fit=crop&w=800&q=80"
+        note: "Bouillon & Herbes"
       }
     ],
     infoValues: ["20-30 EUR", "Vietnamien", "Cozy"],
-    cta: "J'y vais"
+    cta: "J'y vais",
+    translations: {
+      en: {
+        heroSub: "Vietnamese street food - Paris",
+        ratingCount: "24 reviews",
+        trending: "Trending",
+        reviewSummary: {
+          title: "AI review summary",
+          lines: [
+            "Vietnamese food praised for its authenticity and generous portions.",
+            "Warm, human service, rare in fast casual dining.",
+            "The Royal Bo Bun: the ultra-generous signature dish everyone agrees on."
+          ],
+          insight: "The verdict: generous, warm and deeply comforting."
+        },
+        favoriteDishesTitle: "Favorite dishes",
+        favoriteDishesSubtitle: "The dishes customers recommend most",
+        dishes: [
+          { name: "Royal Bo Bun", note: "Signature & generous", image: "/assets/bistrot-saigon-hero.jpg" },
+          { name: "Homemade nems", note: "Crispy & tender" },
+          { name: "Pho", note: "Broth & herbs" }
+        ],
+        infoValues: ["20-30 EUR", "Vietnamese", "Cozy"],
+        cta: "I'm going"
+      }
+    }
   }
 };
 
 export function getRestaurantBySlug(slug) {
-  return restaurants[slug] || restaurants["yummo-rouen"];
+  return normalizeRestaurant(restaurants[slug] || restaurants["yummo-rouen"]);
+}
+
+export function getRestaurantView(restaurant, language) {
+  const normalizedRestaurant = normalizeRestaurant(restaurant);
+  if (language === "fr") return normalizedRestaurant;
+
+  const normalizedLanguage = language || "en";
+  const translation =
+    normalizedRestaurant.translations?.[normalizedLanguage] ||
+    normalizedRestaurant.translations?.en;
+
+  if (!translation) return restaurant;
+
+  return {
+    ...normalizedRestaurant,
+    ...translation,
+    reviewSummary: {
+      ...normalizedRestaurant.reviewSummary,
+      ...translation.reviewSummary
+    },
+    dishes: translation.dishes || normalizedRestaurant.dishes,
+    infoValues: translation.infoValues || normalizedRestaurant.infoValues
+  };
+}
+
+function normalizeRestaurant(restaurant) {
+  return {
+    ...defaultRestaurantFields,
+    ...restaurant,
+    title: restaurant.title || `${restaurant.name} - Yumzy`,
+    heroSub: restaurant.heroSub || "",
+    mapsUrl:
+      restaurant.mapsUrl ||
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.name || "")}`,
+    reviewSummary: {
+      ...defaultRestaurantFields.reviewSummary,
+      ...restaurant.reviewSummary
+    },
+    dishes: restaurant.dishes || [],
+    infoValues: restaurant.infoValues || [],
+    translations: restaurant.translations || {}
+  };
 }
 
 export function getRestaurantSlugFromPath(pathname) {

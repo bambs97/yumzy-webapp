@@ -1,7 +1,29 @@
 import { getSourceFromUrl, initAnalytics, trackEvent } from "./lib/analytics.js";
-import { getRestaurantBySlug, getRestaurantSlugFromPath } from "./data/restaurants.js";
+import { getRestaurantBySlug, getRestaurantSlugFromPath, getRestaurantView } from "./data/restaurants.js";
 
 const restaurant = getRestaurantBySlug(getRestaurantSlugFromPath(window.location.pathname));
+let selectedLanguage = getInitialLanguage();
+const defaultImage = "/assets/yummo-hero.jpeg";
+
+function getInitialLanguage() {
+  const savedLanguage = getSavedLanguage();
+  if (savedLanguage && savedLanguage !== "auto") return savedLanguage;
+
+  const browserLanguage = navigator.language?.slice(0, 2);
+  return browserLanguage === "fr" ? "fr" : "en";
+}
+
+function getSavedLanguage() {
+  try {
+    return localStorage.getItem("yumzyLanguage");
+  } catch (error) {
+    return null;
+  }
+}
+
+function getRenderedRestaurant() {
+  return getRestaurantView(restaurant, selectedLanguage);
+}
 
 function getBaseEventProperties() {
   return {
@@ -18,22 +40,25 @@ function setText(selector, value) {
 }
 
 function renderReviewSummary() {
-  setText(".ia-title", restaurant.reviewSummary.title);
+  const renderedRestaurant = getRenderedRestaurant();
+
+  setText(".ia-title", renderedRestaurant.reviewSummary.title);
 
   const copy = document.querySelector(".ia-copy");
   if (copy) {
-    copy.innerHTML = restaurant.reviewSummary.lines.map((line) => `<p>${line}</p>`).join("");
+    copy.innerHTML = renderedRestaurant.reviewSummary.lines.map((line) => `<p>${line}</p>`).join("");
   }
 
   const insight = document.querySelector(".ia-insight span:last-child");
-  if (insight) insight.textContent = restaurant.reviewSummary.insight;
+  if (insight) insight.textContent = renderedRestaurant.reviewSummary.insight;
 }
 
 function renderDishes() {
+  const renderedRestaurant = getRenderedRestaurant();
   const cards = document.querySelectorAll(".dish-card");
 
   cards.forEach((card, index) => {
-    const dish = restaurant.dishes[index];
+    const dish = renderedRestaurant.dishes[index];
     if (!dish) {
       card.hidden = true;
       return;
@@ -48,9 +73,20 @@ function renderDishes() {
 
     if (button) button.setAttribute("aria-label", `Voir ${dish.name} en grand`);
     if (img) {
-      if (dish.image) img.src = dish.image;
       img.alt = dish.name;
+      if (!dish.image) {
+        img.removeAttribute("src");
+        img.style.display = "none";
+        return;
+      }
+
+      img.src = dish.image;
       img.style.display = "";
+      img.onerror = () => {
+        img.onerror = null;
+        img.removeAttribute("src");
+        img.style.display = "none";
+      };
     }
   });
 }
@@ -68,25 +104,31 @@ function setTextIn(parent, selector, value) {
 }
 
 function renderRestaurant() {
-  document.title = restaurant.title;
+  const renderedRestaurant = getRenderedRestaurant();
 
-  setText(".hero-title", restaurant.name);
-  setText(".hero-sub", restaurant.heroSub);
-  setText(".rating-num", restaurant.rating);
-  setText(".rating-count", restaurant.ratingCount);
-  setText(".trend-label", restaurant.trending);
-  setText(".section-title", restaurant.favoriteDishesTitle);
-  setText(".section-subtitle", restaurant.favoriteDishesSubtitle);
-  setText(".cta", restaurant.cta);
+  document.title = renderedRestaurant.title;
+
+  setText(".hero-title", renderedRestaurant.name);
+  setText(".hero-sub", renderedRestaurant.heroSub);
+  setText(".rating-num", renderedRestaurant.rating);
+  setText(".rating-count", renderedRestaurant.ratingCount);
+  setText(".trend-label", renderedRestaurant.trending);
+  setText(".section-title", renderedRestaurant.favoriteDishesTitle);
+  setText(".section-subtitle", renderedRestaurant.favoriteDishesSubtitle);
+  setText(".cta", renderedRestaurant.cta);
 
   const heroImage = document.querySelector(".hero-img");
-  if (heroImage && restaurant.heroImage) {
-    heroImage.src = restaurant.heroImage;
-    heroImage.alt = restaurant.name;
+  if (heroImage) {
+    heroImage.src = renderedRestaurant.heroImage || defaultImage;
+    heroImage.alt = renderedRestaurant.name;
+    heroImage.onerror = () => {
+      heroImage.onerror = null;
+      heroImage.src = defaultImage;
+    };
   }
 
   document.querySelectorAll(".info-value").forEach((element, index) => {
-    if (restaurant.infoValues[index]) element.textContent = restaurant.infoValues[index];
+    if (renderedRestaurant.infoValues[index]) element.textContent = renderedRestaurant.infoValues[index];
   });
 
   renderReviewSummary();
@@ -109,17 +151,15 @@ function initGoClickTracking() {
   const button = document.querySelector("[data-analytics-event='go_click']");
   if (!button) return;
 
-  button.href = restaurant.mapsUrl;
+  button.href = "#";
+  button.removeAttribute("target");
+  button.removeAttribute("rel");
 
   button.addEventListener(
-    "click",
-    (event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      // On envoie l'event avant d'ouvrir Google Maps.
+    "pointerdown",
+    () => {
+      // On mesure l'intention sans changer le comportement visuel du bouton.
       trackEvent("go_click", getBaseEventProperties());
-      window.open(restaurant.mapsUrl, "_blank", "noopener,noreferrer");
     },
     true
   );
@@ -147,6 +187,8 @@ function initDishClickTracking() {
 function keepRestaurantDataAfterLanguageChange() {
   document.querySelectorAll(".lang-option").forEach((option) => {
     option.addEventListener("click", () => {
+      const language = option.dataset.lang;
+      selectedLanguage = language === "auto" ? getInitialLanguage() : language;
       window.setTimeout(renderRestaurant, 0);
     });
   });
