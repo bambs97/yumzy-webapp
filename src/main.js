@@ -17,6 +17,10 @@ function getInitialLanguage() {
   const savedLanguage = getSavedLanguage();
   if (savedLanguage && savedLanguage !== "auto") return savedLanguage;
 
+  return getBrowserLanguage();
+}
+
+function getBrowserLanguage() {
   const browserLanguage = navigator.language?.slice(0, 2);
   return browserLanguage === "fr" ? "fr" : "en";
 }
@@ -158,6 +162,24 @@ function renderLanguageOptions() {
   });
 }
 
+function saveLanguage(language) {
+  try {
+    if (language === "auto") localStorage.removeItem("yumzyLanguage");
+    else localStorage.setItem("yumzyLanguage", language);
+  } catch (error) {}
+}
+
+function updateLanguageUi(selected) {
+  const applied = selected === "auto" ? getBrowserLanguage() : selected;
+  const code = document.getElementById("languageCode");
+
+  if (code) code.textContent = applied.toUpperCase();
+
+  document.querySelectorAll(".lang-option").forEach((option) => {
+    option.classList.toggle("is-active", option.dataset.lang === selected);
+  });
+}
+
 function trackRestaurantView() {
   const properties = getBaseEventProperties();
 
@@ -208,19 +230,30 @@ function initDishClickTracking() {
 
 function keepRestaurantDataAfterLanguageChange() {
   const changeLanguage = (language) => {
-    selectedLanguage = language === "auto" ? getInitialLanguage() : language;
-    window.setTimeout(renderRestaurant, 0);
+    const nextLanguage = language || "auto";
+    selectedLanguage = nextLanguage === "auto" ? getBrowserLanguage() : nextLanguage;
+    saveLanguage(nextLanguage);
+    updateLanguageUi(nextLanguage);
+    renderRestaurant();
+
+    const toggle = document.getElementById("yumzyLangToggle");
+    if (toggle) toggle.checked = false;
   };
 
-  document.addEventListener(
-    "click",
-    (event) => {
-      const option = event.target.closest(".lang-option");
-      if (!option) return;
-      changeLanguage(option.dataset.lang || "auto");
-    },
-    true
-  );
+  updateLanguageUi(getSavedLanguage() || "auto");
+
+  document.querySelectorAll(".lang-option").forEach((option) => {
+    option.addEventListener(
+      "click",
+      (event) => {
+        // Le rendu multi-restaurants gere la langue pour eviter l'ancien script YumMo.
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        changeLanguage(option.dataset.lang || "auto");
+      },
+      true
+    );
+  });
 
   window.addEventListener("yumzy:language-change", (event) => {
     changeLanguage(event.detail?.language || "auto");
