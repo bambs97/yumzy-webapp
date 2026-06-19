@@ -5,6 +5,14 @@ const restaurant = getRestaurantBySlug(getRestaurantSlugFromPath(window.location
 let selectedLanguage = getInitialLanguage();
 const defaultImage = "/assets/yummo-hero.jpeg";
 
+function getAssetUrl(path) {
+  if (!path) return "";
+  if (/^(https?:|data:|blob:)/.test(path)) return path;
+
+  // Les images restent dans /assets sur Netlify, meme avec une URL /r/restaurant.
+  return new URL(path.replace(/^\//, ""), window.location.origin).toString();
+}
+
 function getInitialLanguage() {
   const savedLanguage = getSavedLanguage();
   if (savedLanguage && savedLanguage !== "auto") return savedLanguage;
@@ -23,6 +31,10 @@ function getSavedLanguage() {
 
 function getRenderedRestaurant() {
   return getRestaurantView(restaurant, selectedLanguage);
+}
+
+function getAvailableLanguages() {
+  return ["auto", "fr", ...Object.keys(restaurant.translations || {})];
 }
 
 function getBaseEventProperties() {
@@ -80,7 +92,7 @@ function renderDishes() {
         return;
       }
 
-      img.src = dish.image;
+      img.src = getAssetUrl(dish.image);
       img.style.display = "";
       img.onerror = () => {
         img.onerror = null;
@@ -119,11 +131,11 @@ function renderRestaurant() {
 
   const heroImage = document.querySelector(".hero-img");
   if (heroImage) {
-    heroImage.src = renderedRestaurant.heroImage || defaultImage;
+    heroImage.src = getAssetUrl(renderedRestaurant.heroImage || defaultImage);
     heroImage.alt = renderedRestaurant.name;
     heroImage.onerror = () => {
       heroImage.onerror = null;
-      heroImage.src = defaultImage;
+      heroImage.src = getAssetUrl(defaultImage);
     };
   }
 
@@ -133,7 +145,17 @@ function renderRestaurant() {
 
   renderReviewSummary();
   renderDishes();
+  window.dispatchEvent(new CustomEvent("yumzy:restaurant-rendered"));
   document.body.classList.remove("is-loading-restaurant");
+}
+
+function renderLanguageOptions() {
+  const availableLanguages = getAvailableLanguages();
+
+  document.querySelectorAll(".lang-option").forEach((option) => {
+    const language = option.dataset.lang;
+    option.hidden = !availableLanguages.includes(language);
+  });
 }
 
 function trackRestaurantView() {
@@ -185,15 +207,27 @@ function initDishClickTracking() {
 }
 
 function keepRestaurantDataAfterLanguageChange() {
-  document.querySelectorAll(".lang-option").forEach((option) => {
-    option.addEventListener("click", () => {
-      const language = option.dataset.lang;
-      selectedLanguage = language === "auto" ? getInitialLanguage() : language;
-      window.setTimeout(renderRestaurant, 0);
-    });
+  const changeLanguage = (language) => {
+    selectedLanguage = language === "auto" ? getInitialLanguage() : language;
+    window.setTimeout(renderRestaurant, 0);
+  };
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      const option = event.target.closest(".lang-option");
+      if (!option) return;
+      changeLanguage(option.dataset.lang || "auto");
+    },
+    true
+  );
+
+  window.addEventListener("yumzy:language-change", (event) => {
+    changeLanguage(event.detail?.language || "auto");
   });
 }
 
+renderLanguageOptions();
 renderRestaurant();
 initAnalytics();
 trackRestaurantView();
