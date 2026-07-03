@@ -10,6 +10,11 @@ function json(data, status = 200) {
   });
 }
 
+function getEnv(name) {
+  // Netlify expose les variables aux fonctions. Le fallback process.env aide selon le runtime.
+  return Netlify?.env?.get(name) || process.env[name] || "";
+}
+
 function safeDays(value) {
   const days = Number(value || 7);
   return Number.isFinite(days) ? Math.min(Math.max(Math.round(days), 1), 90) : 7;
@@ -70,15 +75,20 @@ export default async (request) => {
   const days = safeDays(url.searchParams.get("days"));
   const restaurantId = url.searchParams.get("restaurant_id") || "";
 
-  const apiKey = Netlify.env.get("POSTHOG_PERSONAL_API_KEY");
-  const projectId = Netlify.env.get("POSTHOG_PROJECT_ID");
-  const host = Netlify.env.get("POSTHOG_API_HOST") || "https://eu.posthog.com";
+  const apiKey = getEnv("POSTHOG_PERSONAL_API_KEY");
+  const projectId = getEnv("POSTHOG_PROJECT_ID");
+  const host = getEnv("POSTHOG_API_HOST") || "https://eu.posthog.com";
 
   // Ces variables restent cote Netlify : elles ne sont jamais exposees dans le navigateur.
   if (!apiKey || !projectId) {
     return json({
       setupRequired: true,
-      message: "Ajoute POSTHOG_PERSONAL_API_KEY et POSTHOG_PROJECT_ID dans Netlify.",
+      message: "La fonction Netlify ne voit pas encore les variables PostHog.",
+      env: {
+        hasPersonalApiKey: Boolean(apiKey),
+        hasProjectId: Boolean(projectId),
+        hasApiHost: Boolean(host)
+      },
       period: { days },
       filters: { restaurant_id: restaurantId || null },
       totals: { restaurant_view: 0, qr_scan: 0, go_click: 0, dish_click: 0 },
