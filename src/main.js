@@ -121,12 +121,13 @@ function setTextIn(parent, selector, value) {
 
 function renderRestaurant() {
   const renderedRestaurant = getRenderedRestaurant();
+  const displayedRating = restaurant.id === "yummo-rouen" ? "4,9" : renderedRestaurant.rating;
 
   document.title = renderedRestaurant.title;
 
   setText(".hero-title", renderedRestaurant.name);
   setText(".hero-sub", renderedRestaurant.heroSub);
-  setText(".rating-num", renderedRestaurant.rating);
+  setText(".rating-num", displayedRating);
   setText(".rating-count", renderedRestaurant.ratingCount);
   setText(".trend-label", renderedRestaurant.trending);
   setText(".section-title", renderedRestaurant.favoriteDishesTitle);
