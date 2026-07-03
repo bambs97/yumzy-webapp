@@ -10,7 +10,7 @@ const bistrotDishImages = {
 
 export const defaultRestaurantFields = {
   heroImage: "/assets/yummo-hero.jpeg",
-  rating: "4.6",
+  rating: "4.9",
   ratingCount: "",
   trending: "Tendance",
   reviewSummary: {
