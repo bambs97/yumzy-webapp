@@ -1159,6 +1159,8 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ event: eventName, properties: clean }),
         keepalive: true
+      }).then((response) => {
+        if (!response.ok) throw new Error("Track endpoint unavailable");
       }).catch(() => {
         const body = JSON.stringify({
           api_key: posthogKey,
