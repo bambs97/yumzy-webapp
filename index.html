@@ -1152,23 +1152,28 @@
     }
 
     function sendEvent(eventName, properties) {
-      const body = JSON.stringify({
-        api_key: posthogKey,
-        event: eventName,
-        properties: cleanProperties(properties)
-      });
+      const clean = cleanProperties(properties);
 
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(posthogHost.replace(/\/$/, "") + "/capture/", new Blob([body], { type: "application/json" }));
-        return;
-      }
-
-      fetch(posthogHost.replace(/\/$/, "") + "/capture/", {
+      fetch("/api/track-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body,
+        body: JSON.stringify({ event: eventName, properties: clean }),
         keepalive: true
-      }).catch(() => {});
+      }).catch(() => {
+        const body = JSON.stringify({
+          api_key: posthogKey,
+          token: posthogKey,
+          event: eventName,
+          properties: clean
+        });
+
+        fetch(posthogHost.replace(/\/$/, "") + "/capture/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+          keepalive: true
+        }).catch(() => {});
+      });
     }
 
     if (getSource() === "qr") {
