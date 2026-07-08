@@ -185,7 +185,7 @@ function trackRestaurantView() {
   const properties = getBaseEventProperties();
 
   // Un QR code peut pointer vers /r/slug-du-restaurant?source=qr.
-  if (properties.source === "qr") {
+  if (!window.yumzyDirectAnalyticsEvents && properties.source === "qr") {
     trackEvent("qr_scan", properties);
   }
 
@@ -211,6 +211,8 @@ function initGoClickTracking() {
 }
 
 function initDishClickTracking() {
+  if (window.yumzyDirectAnalyticsEvents) return;
+
   document.addEventListener(
     "pointerdown",
     (event) => {

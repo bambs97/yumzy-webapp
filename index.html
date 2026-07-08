@@ -1104,6 +1104,88 @@
   window.addEventListener("yumzy:restaurant-rendered", initDishImagePeek);
   initBonAppPage();
 </script>
+<script>
+  window.yumzyDirectAnalyticsEvents = true;
+
+  (function () {
+    const posthogKey = "%VITE_POSTHOG_KEY%";
+    const configuredHost = "%VITE_POSTHOG_HOST%";
+    const posthogHost = configuredHost && !configuredHost.startsWith("%")
+      ? configuredHost
+      : "https://eu.i.posthog.com";
+
+    // Filet de securite: ces events partent meme si le bundle principal reste en cache.
+    if (!posthogKey || posthogKey.startsWith("%")) return;
+
+    function getAnonId() {
+      try {
+        const existing = localStorage.getItem("yumzy_anon_id");
+        if (existing) return existing;
+        const next = "anon_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+        localStorage.setItem("yumzy_anon_id", next);
+        return next;
+      } catch (error) {
+        return "anon_" + Math.random().toString(36).slice(2);
+      }
+    }
+
+    function getSource() {
+      return new URLSearchParams(window.location.search).get("source")?.trim().toLowerCase() || undefined;
+    }
+
+    function getBaseProperties() {
+      const slug = window.location.pathname.match(/^\/r\/([^/?#]+)/)?.[1] || "yummo-rouen";
+      return {
+        distinct_id: getAnonId(),
+        restaurant_id: slug,
+        restaurant_name: document.querySelector(".hero-title")?.textContent?.trim() || "YumMó",
+        page_path: window.location.pathname,
+        source: getSource(),
+        $current_url: window.location.href
+      };
+    }
+
+    function cleanProperties(properties) {
+      return Object.fromEntries(
+        Object.entries(properties).filter(([, value]) => value !== undefined && value !== "")
+      );
+    }
+
+    function sendEvent(eventName, properties) {
+      const body = JSON.stringify({
+        api_key: posthogKey,
+        event: eventName,
+        properties: cleanProperties(properties)
+      });
+
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(posthogHost.replace(/\/$/, "") + "/capture/", new Blob([body], { type: "application/json" }));
+        return;
+      }
+
+      fetch(posthogHost.replace(/\/$/, "") + "/capture/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+        keepalive: true
+      }).catch(() => {});
+    }
+
+    if (getSource() === "qr") {
+      sendEvent("qr_scan", getBaseProperties());
+    }
+
+    document.addEventListener("pointerdown", (event) => {
+      const dishCard = event.target.closest(".dish-card");
+      if (!dishCard || !dishCard.closest(".fav")) return;
+
+      sendEvent("dish_click", {
+        ...getBaseProperties(),
+        dish_name: dishCard.querySelector(".dish-name")?.textContent?.trim()
+      });
+    }, true);
+  })();
+</script>
 <script type="module" src="/src/main.js"></script>
 
 </body>
