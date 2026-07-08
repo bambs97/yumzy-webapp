@@ -1164,12 +1164,12 @@
       }).catch(() => {
         const body = JSON.stringify({
           api_key: posthogKey,
-          token: posthogKey,
           event: eventName,
+          distinct_id: clean.distinct_id || getAnonId(),
           properties: clean
         });
 
-        fetch(posthogHost.replace(/\/$/, "") + "/capture/", {
+        fetch(posthogHost.replace(/\/$/, "") + "/i/v0/e/", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body,

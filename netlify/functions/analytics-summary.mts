@@ -106,16 +106,16 @@ async function handleTrackEvent(request) {
   }
 
   const properties = cleanProperties(payload?.properties);
-  const response = await fetch(`${posthogHost.replace(/\/$/, "")}/capture/`, {
+  const response = await fetch(`${posthogHost.replace(/\/$/, "")}/i/v0/e/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       api_key: posthogKey,
-      token: posthogKey,
       event,
+      distinct_id: properties.distinct_id || crypto.randomUUID(),
       properties: {
         ...properties,
-        distinct_id: properties.distinct_id || crypto.randomUUID()
+        $process_person_profile: false
       }
     })
   });

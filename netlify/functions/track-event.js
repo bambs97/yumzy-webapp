@@ -51,16 +51,16 @@ export default async (request) => {
   const properties = cleanProperties(payload?.properties);
   const distinctId = properties.distinct_id || crypto.randomUUID();
 
-  const response = await fetch(`${posthogHost.replace(/\/$/, "")}/capture/`, {
+  const response = await fetch(`${posthogHost.replace(/\/$/, "")}/i/v0/e/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       api_key: posthogKey,
-      token: posthogKey,
       event,
+      distinct_id: distinctId,
       properties: {
         ...properties,
-        distinct_id: distinctId
+        $process_person_profile: false
       }
     })
   });
