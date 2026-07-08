@@ -212,14 +212,14 @@ function initGoClickTracking() {
 
 function initDishClickTracking() {
   document.addEventListener(
-    "click",
+    "pointerdown",
     (event) => {
-      const dishButton = event.target.closest(".fav .thumb");
-      const dishCard = dishButton?.closest(".dish-card");
-      if (!dishButton || !dishCard) return;
+      const dishCard = event.target.closest(".dish-card");
+      if (!dishCard || !dishCard.closest(".fav")) return;
 
       const dishName = dishCard.querySelector(".dish-name")?.textContent?.trim();
 
+      // Le pointerdown marche mieux sur mobile, meme si un ancien script bloque le click.
       trackEvent("dish_click", {
         ...getBaseEventProperties(),
         dish_name: dishName
