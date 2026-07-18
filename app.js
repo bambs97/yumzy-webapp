@@ -1,8 +1,12 @@
 const numberFormatter = new Intl.NumberFormat("fr-FR");
 const sessionKey = "yumzy_admin_session";
+const knownRestaurants = [
+  { id: "yummo-rouen", name: "YumMo Rouen" },
+  { id: "bistrot-saigon-paris", name: "Bistrot Saigon Paris" }
+];
 
 const state = {
-  days: new URLSearchParams(window.location.search).get("days") || "7",
+  days: new URLSearchParams(window.location.search).get("days") || "30",
   restaurantId: new URLSearchParams(window.location.search).get("restaurant_id") || "",
   token: localStorage.getItem(sessionKey) || "",
   user: null
@@ -96,7 +100,7 @@ async function login(event) {
 
 function updateUrl() {
   const params = new URLSearchParams();
-  if (state.days !== "7") params.set("days", state.days);
+  if (state.days !== "30") params.set("days", state.days);
   if (state.restaurantId && state.user?.role !== "restaurant") params.set("restaurant_id", state.restaurantId);
   const query = params.toString();
   history.replaceState(null, "", query ? `/admin/?${query}` : "/admin/");
@@ -130,22 +134,52 @@ function setLoading() {
 
 function render(data) {
   elements.setupBanner.hidden = !data.setupRequired;
+  const restaurants = mergeRestaurants(data.restaurants || []);
+
   setText("qr_scan", formatNumber(data.totals.qr_scan));
   setText("restaurant_view", formatNumber(data.totals.restaurant_view));
   setText("go_click", formatNumber(data.totals.go_click));
   setText("conversionRate", `${formatNumber(data.conversionRate)}%`);
   renderDecisionSummary(data);
-  renderRestaurantFilter(data.restaurants || []);
+  renderRestaurantFilter(restaurants);
   renderChart(data.timeline || []);
   renderTopDishes(data.topDishes || []);
-  renderRestaurants(data.restaurants || []);
+  renderRestaurants(restaurants);
+}
+
+function mergeRestaurants(restaurants) {
+  const byId = new Map();
+
+  knownRestaurants.forEach((restaurant) => {
+    byId.set(restaurant.id, {
+      ...restaurant,
+      views: 0,
+      scans: 0,
+      goClicks: 0,
+      dishClicks: 0
+    });
+  });
+
+  restaurants.forEach((restaurant) => {
+    byId.set(restaurant.id, {
+      ...byId.get(restaurant.id),
+      ...restaurant
+    });
+  });
+
+  if (state.user?.role === "restaurant") {
+    return [byId.get(state.user.restaurant_id)].filter(Boolean);
+  }
+
+  return Array.from(byId.values());
 }
 
 function renderDecisionSummary(data) {
   const visitors = Number(data.totals.restaurant_view || 0);
   const decisions = Number(data.totals.go_click || 0);
   const rate = Number(data.conversionRate || 0);
-  const periodLabel = data.period?.days === 1 ? "aujourd'hui" : "cette semaine";
+  const days = Number(data.period?.days || state.days);
+  const periodLabel = days === 1 ? "aujourd'hui" : `sur les ${days} derniers jours`;
 
   if (!visitors) {
     setText("decisionSummary", "Votre fiche commence a collecter des donnees.");
