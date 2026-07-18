@@ -7,6 +7,38 @@
   <link rel="stylesheet" href="/admin/styles.css">
 </head>
 <body>
+  <section id="loginView" class="login-view">
+    <form id="loginForm" class="login-card">
+      <p class="eyebrow">Yumzy Analytics</p>
+      <h1>Connexion</h1>
+      <p class="login-copy">Acces stats pour admin Yumzy et restaurateurs.</p>
+
+      <label>
+        Profil
+        <select id="loginRole">
+          <option value="admin">Admin Yumzy</option>
+          <option value="restaurant">Restaurateur</option>
+        </select>
+      </label>
+
+      <label id="restaurantLoginField" hidden>
+        Restaurant
+        <select id="loginRestaurant">
+          <option value="yummo-rouen">YumMo Rouen</option>
+          <option value="bistrot-saigon-paris">Bistrot Saigon Paris</option>
+        </select>
+      </label>
+
+      <label>
+        Mot de passe
+        <input id="loginPassword" type="password" autocomplete="current-password" required>
+      </label>
+
+      <button class="login-button" type="submit">Se connecter</button>
+      <p id="loginError" class="login-error" hidden></p>
+    </form>
+  </section>
+
   <main class="shell">
     <header class="topbar">
       <div>
@@ -14,6 +46,8 @@
         <h1>Tableau de bord</h1>
       </div>
       <div class="filters">
+        <span id="sessionLabel" class="session-label"></span>
+        <button id="logoutButton" class="logout-button" type="button">Quitter</button>
         <select id="restaurantFilter" aria-label="Restaurant">
           <option value="">Tous les restaurants</option>
         </select>
@@ -38,20 +72,24 @@
         <small>Entrées depuis les QR codes</small>
       </article>
       <article class="kpi">
-        <span>Vues fiche</span>
+        <span>Visiteurs</span>
         <strong id="restaurant_view">0</strong>
-        <small>Pages restaurant consultées</small>
+        <small>Personnes qui ont consulte votre fiche</small>
       </article>
       <article class="kpi accent">
-        <span>J'y vais</span>
+        <span>Intentions de visite</span>
         <strong id="go_click">0</strong>
-        <small>Clics intention de visite</small>
+        <small>Personnes qui ont decide de venir</small>
       </article>
       <article class="kpi">
-        <span>Conversion</span>
+        <span>Taux de decision</span>
         <strong id="conversionRate">0%</strong>
-        <small>J'y vais / vues fiche</small>
+        <small>Intentions / visiteurs</small>
       </article>
+    </section>
+
+    <section class="decision-summary" aria-live="polite">
+      <p id="decisionSummary">Votre fiche commence a collecter des donnees.</p>
     </section>
 
     <section class="panel-grid">
