@@ -12,6 +12,11 @@
   to = "/admin/index.html"
   status = 200
 
+[[redirects]]
+  from = "/restaurant/*"
+  to = "/admin/index.html"
+  status = 200
+
 [[headers]]
   for = "/index.html"
   [headers.values]
