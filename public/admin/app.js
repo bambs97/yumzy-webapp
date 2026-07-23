@@ -1,9 +1,16 @@
 const numberFormatter = new Intl.NumberFormat("fr-FR");
 const sessionKey = "yumzy_admin_session";
+const knownRestaurants = [
+  { id: "yummo-rouen", name: "YumMo Rouen" },
+  { id: "bistrot-saigon-paris", name: "Bistrot Saigon Paris" }
+];
+const restaurantPortalMatch = window.location.pathname.match(/^\/restaurant\/([^/?#]+)/);
+const portalRestaurantId = restaurantPortalMatch?.[1] || "";
+const isRestaurantPortal = Boolean(portalRestaurantId);
 
 const state = {
-  days: new URLSearchParams(window.location.search).get("days") || "7",
-  restaurantId: new URLSearchParams(window.location.search).get("restaurant_id") || "",
+  days: new URLSearchParams(window.location.search).get("days") || "30",
+  restaurantId: portalRestaurantId || new URLSearchParams(window.location.search).get("restaurant_id") || "",
   token: localStorage.getItem(sessionKey) || "",
   user: null
 };
@@ -11,6 +18,8 @@ const state = {
 const elements = {
   loginView: document.getElementById("loginView"),
   loginForm: document.getElementById("loginForm"),
+  loginCopy: document.getElementById("loginCopy"),
+  loginRoleField: document.getElementById("loginRoleField"),
   loginRole: document.getElementById("loginRole"),
   loginRestaurant: document.getElementById("loginRestaurant"),
   restaurantLoginField: document.getElementById("restaurantLoginField"),
@@ -42,7 +51,7 @@ function authHeaders() {
 function setLoggedIn(user) {
   state.user = user;
   elements.loginView.hidden = true;
-  elements.sessionLabel.textContent = user.role === "admin" ? "Admin" : `Restaurateur: ${user.restaurant_id}`;
+  elements.sessionLabel.textContent = user.role === "admin" ? "Mode admin" : restaurantName(user.restaurant_id);
 
   const isRestaurant = user.role === "restaurant";
   elements.restaurantFilter.disabled = isRestaurant;
@@ -61,6 +70,10 @@ async function verifySession() {
   const response = await fetch("/api/auth", { headers: authHeaders() });
   if (!response.ok) return false;
   const data = await response.json();
+  if (isRestaurantPortal && (data.user.role !== "restaurant" || data.user.restaurant_id !== portalRestaurantId)) {
+    logout();
+    return false;
+  }
   setLoggedIn(data.user);
   return true;
 }
@@ -70,8 +83,8 @@ async function login(event) {
   elements.loginError.hidden = true;
 
   const body = {
-    role: elements.loginRole.value,
-    restaurant_id: elements.loginRestaurant.value,
+    role: isRestaurantPortal ? "restaurant" : elements.loginRole.value,
+    restaurant_id: isRestaurantPortal ? portalRestaurantId : elements.loginRestaurant.value,
     password: elements.loginPassword.value
   };
 
@@ -95,8 +108,10 @@ async function login(event) {
 }
 
 function updateUrl() {
+  if (isRestaurantPortal) return;
+
   const params = new URLSearchParams();
-  if (state.days !== "7") params.set("days", state.days);
+  if (state.days !== "30") params.set("days", state.days);
   if (state.restaurantId && state.user?.role !== "restaurant") params.set("restaurant_id", state.restaurantId);
   const query = params.toString();
   history.replaceState(null, "", query ? `/admin/?${query}` : "/admin/");
@@ -130,22 +145,52 @@ function setLoading() {
 
 function render(data) {
   elements.setupBanner.hidden = !data.setupRequired;
+  const restaurants = mergeRestaurants(data.restaurants || []);
+
   setText("qr_scan", formatNumber(data.totals.qr_scan));
   setText("restaurant_view", formatNumber(data.totals.restaurant_view));
   setText("go_click", formatNumber(data.totals.go_click));
   setText("conversionRate", `${formatNumber(data.conversionRate)}%`);
   renderDecisionSummary(data);
-  renderRestaurantFilter(data.restaurants || []);
+  renderRestaurantFilter(restaurants);
   renderChart(data.timeline || []);
   renderTopDishes(data.topDishes || []);
-  renderRestaurants(data.restaurants || []);
+  renderRestaurants(restaurants);
+}
+
+function mergeRestaurants(restaurants) {
+  const byId = new Map();
+
+  knownRestaurants.forEach((restaurant) => {
+    byId.set(restaurant.id, {
+      ...restaurant,
+      views: 0,
+      scans: 0,
+      goClicks: 0,
+      dishClicks: 0
+    });
+  });
+
+  restaurants.forEach((restaurant) => {
+    byId.set(restaurant.id, {
+      ...byId.get(restaurant.id),
+      ...restaurant
+    });
+  });
+
+  if (state.user?.role === "restaurant") {
+    return [byId.get(state.user.restaurant_id)].filter(Boolean);
+  }
+
+  return Array.from(byId.values());
 }
 
 function renderDecisionSummary(data) {
   const visitors = Number(data.totals.restaurant_view || 0);
   const decisions = Number(data.totals.go_click || 0);
   const rate = Number(data.conversionRate || 0);
-  const periodLabel = data.period?.days === 1 ? "aujourd'hui" : "cette semaine";
+  const days = Number(data.period?.days || state.days);
+  const periodLabel = days === 1 ? "aujourd'hui" : `sur les ${days} derniers jours`;
 
   if (!visitors) {
     setText("decisionSummary", "Votre fiche commence a collecter des donnees.");
@@ -168,7 +213,7 @@ function renderDecisionSummary(data) {
 
 function renderRestaurantFilter(restaurants) {
   const current = state.restaurantId || elements.restaurantFilter.value;
-  elements.restaurantFilter.innerHTML = `<option value="">Tous les restaurants</option>`;
+  elements.restaurantFilter.innerHTML = state.user?.role === "restaurant" ? "" : `<option value="">Vue globale</option>`;
 
   restaurants.forEach((restaurant) => {
     const option = document.createElement("option");
@@ -250,6 +295,22 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function restaurantName(restaurantId) {
+  return knownRestaurants.find((restaurant) => restaurant.id === restaurantId)?.name || restaurantId;
+}
+
+function initPortalMode() {
+  if (!isRestaurantPortal) return;
+
+  elements.loginRole.value = "restaurant";
+  elements.loginRestaurant.value = portalRestaurantId;
+  elements.loginRoleField.hidden = true;
+  elements.restaurantLoginField.hidden = true;
+  elements.restaurantFilter.disabled = true;
+  elements.loginCopy.textContent = `Acces aux statistiques ${restaurantName(portalRestaurantId)}.`;
+  document.title = `${restaurantName(portalRestaurantId)} - Yumzy Analytics`;
+}
+
 function showError(error) {
   elements.setupBanner.hidden = false;
   elements.setupBanner.innerHTML = `<strong>Erreur analytics.</strong> ${escapeHtml(error.message)}`;
@@ -259,9 +320,11 @@ function showError(error) {
   setText("conversionRate", "0%");
 }
 
+initPortalMode();
 elements.periodFilter.value = state.days;
 elements.restaurantFilter.value = state.restaurantId;
 elements.loginRole.addEventListener("change", () => {
+  if (isRestaurantPortal) return;
   elements.restaurantLoginField.hidden = elements.loginRole.value !== "restaurant";
 });
 elements.loginForm.addEventListener("submit", (event) => login(event).catch(showError));
