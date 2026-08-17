@@ -152,11 +152,33 @@ function cleanProperties(properties) {
 }
 
 function readRestaurantPasswords() {
+  const raw = getEnv("YUMZY_RESTAURANT_PASSWORDS").trim();
+  if (!raw) return {};
+
   try {
-    return JSON.parse(getEnv("YUMZY_RESTAURANT_PASSWORDS") || "{}");
+    return JSON.parse(raw.replace(/[“”]/g, '"').replace(/[‘’]/g, "'"));
   } catch (error) {
-    return {};
+    // Format de secours plus simple dans Netlify:
+    // yummo-rouen=motdepasse,bistrot-saigon-paris=motdepasse
+    return raw.split(",").reduce((acc, pair) => {
+      const separatorIndex = pair.indexOf("=");
+      if (separatorIndex === -1) return acc;
+      const key = pair.slice(0, separatorIndex).trim();
+      const value = pair.slice(separatorIndex + 1).trim();
+      if (key && value) acc[key] = value;
+      return acc;
+    }, {});
   }
+}
+
+function readRestaurantPassword(restaurantId) {
+  const restaurantPasswords = readRestaurantPasswords();
+  const normalizedId = restaurantId.trim().toLowerCase();
+
+  return {
+    password: restaurantPasswords[normalizedId],
+    configuredRestaurants: Object.keys(restaurantPasswords)
+  };
 }
 
 async function handleAuth(request) {
@@ -190,15 +212,22 @@ async function handleAuth(request) {
   }
 
   if (role === "restaurant") {
-    const restaurantPasswords = readRestaurantPasswords();
-    if (!restaurantId || !restaurantPasswords[restaurantId]) {
-      return json({ ok: false, error: "Restaurant non configure." }, 401);
+    const normalizedRestaurantId = restaurantId.trim().toLowerCase();
+    const { password: restaurantPassword, configuredRestaurants } = readRestaurantPassword(normalizedRestaurantId);
+
+    if (!normalizedRestaurantId || !restaurantPassword) {
+      return json({
+        ok: false,
+        error: "Restaurant non configure.",
+        receivedRestaurantId: normalizedRestaurantId || null,
+        configuredRestaurants
+      }, 401);
     }
-    if (password !== restaurantPasswords[restaurantId]) {
+    if (password !== restaurantPassword) {
       return json({ ok: false, error: "Identifiants incorrects." }, 401);
     }
 
-    const user = { role: "restaurant", restaurant_id: restaurantId, name: restaurantId };
+    const user = { role: "restaurant", restaurant_id: normalizedRestaurantId, name: normalizedRestaurantId };
     return json({ ok: true, user, token: await createSession(user) });
   }
 
