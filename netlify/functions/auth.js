@@ -9,7 +9,7 @@ function json(data, status = 200) {
 }
 
 function getEnv(name) {
-  return Netlify?.env?.get(name) || process.env[name] || "";
+  return globalThis.Netlify?.env?.get(name) || process.env[name] || "";
 }
 
 function base64UrlEncode(value) {
@@ -66,24 +66,52 @@ async function readSession(request) {
   }
 }
 
-function readRestaurantPasswords() {
-  const raw = getEnv("YUMZY_RESTAURANT_PASSWORDS").trim();
-  if (!raw) return {};
+function addPassword(passwords, restaurantId, password) {
+  const cleanId = String(restaurantId || "").trim().toLowerCase();
+  const cleanPassword = String(password || "").trim();
+  if (cleanId && cleanPassword) passwords[cleanId] = cleanPassword;
+}
 
-  try {
-    return JSON.parse(raw.replace(/[“”]/g, '"').replace(/[‘’]/g, "'"));
-  } catch (error) {
-    // Format de secours plus simple dans Netlify:
-    // yummo-rouen=motdepasse,bistrot-saigon-paris=motdepasse
-    return raw.split(",").reduce((acc, pair) => {
-      const separatorIndex = pair.indexOf("=");
-      if (separatorIndex === -1) return acc;
-      const key = pair.slice(0, separatorIndex).trim();
-      const value = pair.slice(separatorIndex + 1).trim();
-      if (key && value) acc[key] = value;
-      return acc;
-    }, {});
+function readRestaurantPasswords() {
+  const passwords = {};
+  const raw = (
+    getEnv("YUMZY_RESTAURANT_PASSWORDS") ||
+    getEnv("YUMZY_RESTAURANTS_PASSWORDS") ||
+    getEnv("VITE_YUMZY_RESTAURANT_PASSWORDS")
+  ).trim();
+
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw.replace(/[\u201c\u201d]/g, '"').replace(/[\u2018\u2019]/g, "'"));
+      Object.entries(parsed).forEach(([restaurantId, password]) => {
+        addPassword(passwords, restaurantId, password);
+      });
+    } catch (error) {
+      // Format simple accepte dans Netlify: yummo-rouen=motdepasse,bistrot-saigon-paris=motdepasse
+      raw.split(",").forEach((pair) => {
+        const separatorIndex = pair.indexOf("=");
+        if (separatorIndex === -1) return;
+        addPassword(passwords, pair.slice(0, separatorIndex), pair.slice(separatorIndex + 1));
+      });
+    }
   }
+
+  // Variables dediees, plus simples et moins fragiles que le JSON.
+  addPassword(passwords, "yummo-rouen", getEnv("YUMZY_YUMMO_ROUEN_PASSWORD") || getEnv("YUMMO_ROUEN_PASSWORD"));
+  addPassword(
+    passwords,
+    "bistrot-saigon-paris",
+    getEnv("YUMZY_BISTROT_SAIGON_PARIS_PASSWORD") || getEnv("BISTROT_SAIGON_PARIS_PASSWORD")
+  );
+
+  // Option globale si tu veux donner le meme mot de passe a tous les restaurateurs au debut.
+  const sharedPassword = getEnv("YUMZY_RESTAURANT_PASSWORD").trim();
+  if (sharedPassword) {
+    addPassword(passwords, "yummo-rouen", sharedPassword);
+    addPassword(passwords, "bistrot-saigon-paris", sharedPassword);
+  }
+
+  return passwords;
 }
 
 function readRestaurantPassword(restaurantId) {

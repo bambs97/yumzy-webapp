@@ -17,7 +17,7 @@ function json(data, status = 200) {
 
 function getEnv(name) {
   // Netlify expose les variables aux fonctions. Le fallback process.env aide selon le runtime.
-  return Netlify?.env?.get(name) || process.env[name] || "";
+  return (globalThis as any).Netlify?.env?.get(name) || process.env[name] || "";
 }
 
 function base64UrlEncode(value) {
@@ -447,6 +447,6 @@ export default async (request) => {
 };
 
 export const config = {
-  path: ["/api/analytics-summary", "/api/track-event", "/api/auth"],
-  method: ["GET", "POST"]
+  path: "/api/analytics-summary",
+  method: "GET"
 };
