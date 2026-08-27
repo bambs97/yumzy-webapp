@@ -2,7 +2,7 @@ const POSTHOG_EVENTS = ["restaurant_view", "qr_scan", "go_click", "dish_click"];
 const TRACKABLE_EVENTS = new Set(["qr_scan", "dish_click"]);
 const RESTAURANT_STATS_START_DATES = {
   // Reset dashboard YumMo: les events avant cette date restent dans PostHog mais ne sont plus affiches.
-  "yummo-rouen": "2026-07-25"
+  "yummo-rouen": "2026-08-28"
 };
 
 function json(data, status = 200) {
