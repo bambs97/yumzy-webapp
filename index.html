@@ -1026,29 +1026,73 @@
 
       let touchStartedAt = { x: 0, y: 0, time: 0 };
       let movedLikeScroll = false;
+      let lastOpenedAt = 0;
 
-      thumb.addEventListener("pointerdown", (event) => {
-        touchStartedAt = { x: event.clientX, y: event.clientY, time: Date.now() };
+      const rememberTouchStart = (x, y) => {
+        touchStartedAt = { x, y, time: Date.now() };
         movedLikeScroll = false;
-      });
+      };
 
-      thumb.addEventListener("pointermove", (event) => {
-        const movedX = Math.abs(event.clientX - touchStartedAt.x);
-        const movedY = Math.abs(event.clientY - touchStartedAt.y);
-        if (movedX > 8 || movedY > 8) movedLikeScroll = true;
-      });
+      const rememberTouchMove = (x, y) => {
+        const movedX = Math.abs(x - touchStartedAt.x);
+        const movedY = Math.abs(y - touchStartedAt.y);
+        if (movedX > 10 || movedY > 10) movedLikeScroll = true;
+      };
 
-      thumb.addEventListener("pointerup", (event) => {
+      const openFromTap = (event) => {
         const elapsed = Date.now() - touchStartedAt.time;
-        if (movedLikeScroll || elapsed > 650) return;
+        if (movedLikeScroll || elapsed > 800) return;
+
+        // Certains Android declenchent plusieurs evenements pour le meme appui.
+        if (Date.now() - lastOpenedAt < 450) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
+
+        lastOpenedAt = Date.now();
         event.preventDefault();
         event.stopPropagation();
         showPeekForImage(img);
+      };
+
+      thumb.addEventListener("pointerdown", (event) => {
+        rememberTouchStart(event.clientX, event.clientY);
+      });
+
+      thumb.addEventListener("pointermove", (event) => {
+        rememberTouchMove(event.clientX, event.clientY);
+      });
+
+      thumb.addEventListener("pointerup", (event) => {
+        openFromTap(event);
       });
       thumb.addEventListener("pointercancel", () => {
         movedLikeScroll = true;
       });
-      thumb.addEventListener("click", (event) => event.preventDefault());
+
+      thumb.addEventListener("touchstart", (event) => {
+        const touch = event.touches && event.touches[0];
+        if (touch) rememberTouchStart(touch.clientX, touch.clientY);
+      }, { passive:true });
+
+      thumb.addEventListener("touchmove", (event) => {
+        const touch = event.touches && event.touches[0];
+        if (touch) rememberTouchMove(touch.clientX, touch.clientY);
+      }, { passive:true });
+
+      thumb.addEventListener("touchend", (event) => {
+        openFromTap(event);
+      }, { passive:false });
+
+      thumb.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (Date.now() - lastOpenedAt > 450) {
+          lastOpenedAt = Date.now();
+          showPeekForImage(img);
+        }
+      });
     });
 
     peek.addEventListener("click", hidePeek);
