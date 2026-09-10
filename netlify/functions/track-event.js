@@ -1,4 +1,4 @@
-const ALLOWED_EVENTS = new Set(["qr_scan", "dish_click"]);
+const ALLOWED_EVENTS = new Set(["restaurant_view", "qr_scan", "go_click", "dish_click"]);
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {

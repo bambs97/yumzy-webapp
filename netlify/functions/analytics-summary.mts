@@ -1,5 +1,5 @@
 const POSTHOG_EVENTS = ["restaurant_view", "qr_scan", "go_click", "dish_click"];
-const TRACKABLE_EVENTS = new Set(["qr_scan", "dish_click"]);
+const TRACKABLE_EVENTS = new Set(["restaurant_view", "qr_scan", "go_click", "dish_click"]);
 const RESTAURANT_STATS_START_DATES = {
   // Reset dashboard YumMo: les events avant cette date restent dans PostHog mais ne sont plus affiches.
   "yummo-rouen": "2026-08-28"
@@ -339,21 +339,23 @@ export default async (request) => {
   `;
 
   const totalsQuery = `
-    SELECT event, count()
+    SELECT
+      uniqIf(distinct_id, event = 'qr_scan') AS scans,
+      uniq(distinct_id) AS visitors,
+      uniqIf(distinct_id, event = 'go_click') AS go_clicks,
+      uniqIf(distinct_id, event = 'dish_click') AS dish_clicks
     FROM events
     WHERE ${filter}
-    GROUP BY event
-    ORDER BY event
   `;
 
   const restaurantsQuery = `
     SELECT
       coalesce(properties.restaurant_id, 'unknown') AS restaurant_id,
       any(coalesce(properties.restaurant_name, restaurant_id)) AS restaurant_name,
-      countIf(event = 'restaurant_view') AS views,
-      countIf(event = 'qr_scan') AS scans,
-      countIf(event = 'go_click') AS go_clicks,
-      countIf(event = 'dish_click') AS dish_clicks
+      uniq(distinct_id) AS views,
+      uniqIf(distinct_id, event = 'qr_scan') AS scans,
+      uniqIf(distinct_id, event = 'go_click') AS go_clicks,
+      uniqIf(distinct_id, event = 'dish_click') AS dish_clicks
     FROM events
     WHERE ${eventFilter(days, "")}
       ${globalRestaurantResetFilter()}
@@ -366,7 +368,7 @@ export default async (request) => {
     SELECT
       coalesce(properties.dish_name, 'Plat inconnu') AS dish_name,
       any(coalesce(properties.restaurant_name, 'Restaurant inconnu')) AS restaurant_name,
-      count() AS clicks
+      uniq(distinct_id) AS clicks
     FROM events
     WHERE ${filter}
       AND event = 'dish_click'
@@ -378,10 +380,10 @@ export default async (request) => {
   const timelineQuery = `
     SELECT
       toDate(timestamp) AS day,
-      countIf(event = 'restaurant_view') AS views,
-      countIf(event = 'qr_scan') AS scans,
-      countIf(event = 'go_click') AS go_clicks,
-      countIf(event = 'dish_click') AS dish_clicks
+      uniq(distinct_id) AS views,
+      uniqIf(distinct_id, event = 'qr_scan') AS scans,
+      uniqIf(distinct_id, event = 'go_click') AS go_clicks,
+      uniqIf(distinct_id, event = 'dish_click') AS dish_clicks
     FROM events
     WHERE ${filter}
     GROUP BY day
@@ -396,16 +398,16 @@ export default async (request) => {
       runHogql(timelineQuery, { host, projectId, apiKey })
     ]);
 
+    const totalsRow = rows(totalsResult)[0] || [];
     const totals = {
-      restaurant_view: 0,
-      qr_scan: 0,
-      go_click: 0,
-      dish_click: 0,
-      ...toCountMap(totalsResult)
+      qr_scan: Number(totalsRow[0] || 0),
+      restaurant_view: Number(totalsRow[1] || 0),
+      go_click: Number(totalsRow[2] || 0),
+      dish_click: Number(totalsRow[3] || 0)
     };
 
-    const conversionRate = totals.restaurant_view
-      ? Math.round((totals.go_click / totals.restaurant_view) * 1000) / 10
+    const conversionRate = totals.qr_scan
+      ? Math.round((totals.go_click / totals.qr_scan) * 1000) / 10
       : 0;
 
     return json({
