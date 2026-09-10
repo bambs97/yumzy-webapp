@@ -200,7 +200,7 @@ function renderDecisionSummary(data) {
   if (decisions) {
     setText(
       "decisionSummary",
-      `${periodLabel[0].toUpperCase()}${periodLabel.slice(1)}, ${decisions} personne${decisions > 1 ? "s" : ""} sur ${scans} ont decide de venir apres avoir scanne votre QR code.`
+      `${periodLabel[0].toUpperCase()}${periodLabel.slice(1)}, ${decisions} personne${decisions > 1 ? "s" : ""} sur ${scans} ont indique vouloir venir apres avoir scanne votre QR code.`
     );
     return;
   }
@@ -285,7 +285,7 @@ function renderRestaurants(restaurants) {
       </div>
       <div class="metric"><strong>${formatNumber(restaurant.scans)}</strong><span>QR</span></div>
       <div class="metric"><strong>${formatNumber(restaurant.goClicks)}</strong><span>Intentions</span></div>
-      <div class="metric"><strong>${formatNumber(decisionRate)}%</strong><span>Decision</span></div>
+      <div class="metric"><strong>${formatNumber(decisionRate)}%</strong><span>Intention</span></div>
       <div class="metric"><strong>${formatNumber(restaurant.dishClicks)}</strong><span>Plats</span></div>
     </div>
   `;
