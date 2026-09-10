@@ -138,9 +138,9 @@ async function loadAnalytics() {
 
 function setLoading() {
   setText("qr_scan", "...");
-  setText("restaurant_view", "...");
   setText("go_click", "...");
   setText("conversionRate", "...");
+  setText("dish_click", "...");
 }
 
 function render(data) {
@@ -148,9 +148,9 @@ function render(data) {
   const restaurants = mergeRestaurants(data.restaurants || []);
 
   setText("qr_scan", formatNumber(data.totals.qr_scan));
-  setText("restaurant_view", formatNumber(data.totals.restaurant_view));
   setText("go_click", formatNumber(data.totals.go_click));
   setText("conversionRate", `${formatNumber(data.conversionRate)}%`);
+  setText("dish_click", formatNumber(data.totals.dish_click));
   renderDecisionSummary(data);
   renderRestaurantFilter(restaurants);
   renderChart(data.timeline || []);
@@ -186,13 +186,13 @@ function mergeRestaurants(restaurants) {
 }
 
 function renderDecisionSummary(data) {
-  const visitors = Number(data.totals.restaurant_view || 0);
+  const scans = Number(data.totals.qr_scan || 0);
   const decisions = Number(data.totals.go_click || 0);
   const rate = Number(data.conversionRate || 0);
   const days = Number(data.period?.days || state.days);
   const periodLabel = days === 1 ? "aujourd'hui" : `sur les ${days} derniers jours`;
 
-  if (!visitors) {
+  if (!scans) {
     setText("decisionSummary", "Votre fiche commence a collecter des donnees.");
     return;
   }
@@ -200,14 +200,14 @@ function renderDecisionSummary(data) {
   if (decisions) {
     setText(
       "decisionSummary",
-      `${periodLabel[0].toUpperCase()}${periodLabel.slice(1)}, ${decisions} personne${decisions > 1 ? "s" : ""} sur ${visitors} ont decide de venir apres avoir consulte votre fiche.`
+      `${periodLabel[0].toUpperCase()}${periodLabel.slice(1)}, ${decisions} personne${decisions > 1 ? "s" : ""} sur ${scans} ont decide de venir apres avoir scanne votre QR code.`
     );
     return;
   }
 
   setText(
     "decisionSummary",
-    `Votre fiche a convaincu ${formatNumber(rate)} % des visiteurs ${periodLabel}.`
+    `Votre fiche a convaincu ${formatNumber(rate)} % des personnes ayant scanne votre QR code ${periodLabel}.`
   );
 }
 
@@ -232,16 +232,16 @@ function renderChart(timeline) {
     return;
   }
 
-  const max = Math.max(...timeline.flatMap((point) => [point.views, point.goClicks]), 1);
+  const max = Math.max(...timeline.flatMap((point) => [point.scans, point.goClicks]), 1);
   elements.chart.style.setProperty("--cols", timeline.length);
   elements.chart.innerHTML = timeline.map((point) => {
-    const viewsHeight = Math.max((point.views / max) * 100, point.views ? 6 : 0);
+    const scansHeight = Math.max((point.scans / max) * 100, point.scans ? 6 : 0);
     const clicksHeight = Math.max((point.goClicks / max) * 100, point.goClicks ? 6 : 0);
     const label = new Date(point.day).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
 
     return `
-      <div class="bar-group" title="${formatNumber(point.views)} vues, ${formatNumber(point.goClicks)} clics">
-        <div class="bar" style="height:${viewsHeight}%"></div>
+      <div class="bar-group" title="${formatNumber(point.scans)} scans, ${formatNumber(point.goClicks)} intentions">
+        <div class="bar" style="height:${scansHeight}%"></div>
         <div class="bar clicks" style="height:${clicksHeight}%"></div>
         <div class="bar-label">${label}</div>
       </div>
@@ -272,18 +272,24 @@ function renderRestaurants(restaurants) {
     return;
   }
 
-  elements.restaurants.innerHTML = restaurants.map((restaurant) => `
+  elements.restaurants.innerHTML = restaurants.map((restaurant) => {
+    const decisionRate = restaurant.scans
+      ? Math.round((restaurant.goClicks / restaurant.scans) * 1000) / 10
+      : 0;
+
+    return `
     <div class="table-row">
       <div>
         <strong>${escapeHtml(restaurant.name)}</strong>
         <span>${escapeHtml(restaurant.id)}</span>
       </div>
       <div class="metric"><strong>${formatNumber(restaurant.scans)}</strong><span>QR</span></div>
-      <div class="metric"><strong>${formatNumber(restaurant.views)}</strong><span>Vues</span></div>
-      <div class="metric"><strong>${formatNumber(restaurant.goClicks)}</strong><span>J'y vais</span></div>
+      <div class="metric"><strong>${formatNumber(restaurant.goClicks)}</strong><span>Intentions</span></div>
+      <div class="metric"><strong>${formatNumber(decisionRate)}%</strong><span>Decision</span></div>
       <div class="metric"><strong>${formatNumber(restaurant.dishClicks)}</strong><span>Plats</span></div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function escapeHtml(value) {
@@ -315,9 +321,9 @@ function showError(error) {
   elements.setupBanner.hidden = false;
   elements.setupBanner.innerHTML = `<strong>Erreur analytics.</strong> ${escapeHtml(error.message)}`;
   setText("qr_scan", "0");
-  setText("restaurant_view", "0");
   setText("go_click", "0");
   setText("conversionRate", "0%");
+  setText("dish_click", "0");
 }
 
 initPortalMode();
