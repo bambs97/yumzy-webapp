@@ -262,6 +262,33 @@ select {
   margin-bottom: 18px;
 }
 
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--teal);
+}
+
+.legend-swatch.intentions {
+  background: var(--orange);
+}
+
 .chart {
   display: grid;
   grid-template-columns: repeat(var(--cols, 7), minmax(58px, 1fr));
@@ -434,5 +461,15 @@ select {
 
   .metric {
     text-align: left;
+  }
+
+  .panel-head {
+    align-items: flex-start;
+  }
+
+  .chart-legend {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px 12px;
   }
 }
