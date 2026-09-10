@@ -74,6 +74,14 @@ function addPassword(passwords, restaurantId, password) {
 
 function readRestaurantPasswords() {
   const passwords = {};
+
+  // Le mot de passe partage sert uniquement de valeur par defaut.
+  const sharedPassword = getEnv("YUMZY_RESTAURANT_PASSWORD").trim();
+  if (sharedPassword) {
+    addPassword(passwords, "yummo-rouen", sharedPassword);
+    addPassword(passwords, "bistrot-saigon-paris", sharedPassword);
+  }
+
   const raw = (
     getEnv("YUMZY_RESTAURANT_PASSWORDS") ||
     getEnv("YUMZY_RESTAURANTS_PASSWORDS") ||
@@ -103,13 +111,6 @@ function readRestaurantPasswords() {
     "bistrot-saigon-paris",
     getEnv("YUMZY_BISTROT_SAIGON_PARIS_PASSWORD") || getEnv("BISTROT_SAIGON_PARIS_PASSWORD")
   );
-
-  // Option globale si tu veux donner le meme mot de passe a tous les restaurateurs au debut.
-  const sharedPassword = getEnv("YUMZY_RESTAURANT_PASSWORD").trim();
-  if (sharedPassword) {
-    addPassword(passwords, "yummo-rouen", sharedPassword);
-    addPassword(passwords, "bistrot-saigon-paris", sharedPassword);
-  }
 
   return passwords;
 }
