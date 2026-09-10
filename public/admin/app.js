@@ -31,6 +31,7 @@ const elements = {
   restaurantFilter: document.getElementById("restaurantFilter"),
   periodFilter: document.getElementById("periodFilter"),
   chart: document.getElementById("chart"),
+  activityPeak: document.getElementById("activityPeak"),
   topDishes: document.getElementById("topDishes"),
   restaurants: document.getElementById("restaurants")
 };
@@ -229,24 +230,45 @@ function renderChart(timeline) {
   if (!timeline.length) {
     elements.chart.style.setProperty("--cols", 1);
     elements.chart.innerHTML = `<div class="empty">Pas encore assez de donnees sur cette periode.</div>`;
+    elements.activityPeak.textContent = "Aucune activite enregistree sur cette periode.";
     return;
   }
 
   const max = Math.max(...timeline.flatMap((point) => [point.scans, point.goClicks]), 1);
   elements.chart.style.setProperty("--cols", timeline.length);
   elements.chart.innerHTML = timeline.map((point) => {
-    const scansHeight = Math.max((point.scans / max) * 100, point.scans ? 6 : 0);
-    const clicksHeight = Math.max((point.goClicks / max) * 100, point.goClicks ? 6 : 0);
-    const label = new Date(point.day).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+    const scansHeight = Math.max((point.scans / max) * 82, point.scans ? 5 : 0);
+    const clicksHeight = Math.max((point.goClicks / max) * 82, point.goClicks ? 5 : 0);
+    const date = new Date(`${point.day}T12:00:00`);
+    const weekday = date.toLocaleDateString("fr-FR", { weekday: "short" }).replace(".", "");
+    const label = date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
 
     return `
       <div class="bar-group" title="${formatNumber(point.scans)} scans, ${formatNumber(point.goClicks)} intentions">
-        <div class="bar" style="height:${scansHeight}%"></div>
-        <div class="bar clicks" style="height:${clicksHeight}%"></div>
-        <div class="bar-label">${label}</div>
+        <div class="bar-pair">
+          <div class="bar-column">
+            <span class="bar-value">${formatNumber(point.scans)}</span>
+            <div class="bar" style="height:${scansHeight}%" aria-label="${formatNumber(point.scans)} scans"></div>
+          </div>
+          <div class="bar-column">
+            <span class="bar-value">${formatNumber(point.goClicks)}</span>
+            <div class="bar clicks" style="height:${clicksHeight}%" aria-label="${formatNumber(point.goClicks)} intentions"></div>
+          </div>
+        </div>
+        <div class="bar-label"><span>${weekday}</span><strong>${label}</strong></div>
       </div>
     `;
   }).join("");
+
+  const peak = timeline.reduce((best, point) => {
+    if (Number(point.scans) > Number(best.scans)) return point;
+    if (Number(point.scans) === Number(best.scans) && Number(point.goClicks) > Number(best.goClicks)) return point;
+    return best;
+  });
+  const peakDay = new Date(`${peak.day}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "long" });
+  const scans = Number(peak.scans || 0);
+  const intentions = Number(peak.goClicks || 0);
+  elements.activityPeak.textContent = `Pic d'activite ${peakDay} : ${formatNumber(scans)} scan${scans > 1 ? "s" : ""} et ${formatNumber(intentions)} intention${intentions > 1 ? "s" : ""}.`;
 }
 
 function renderTopDishes(dishes) {
