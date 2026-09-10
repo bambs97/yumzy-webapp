@@ -1159,7 +1159,6 @@
       : "https://eu.i.posthog.com";
 
     // Filet de securite: ces events partent meme si le bundle principal reste en cache.
-    if (!posthogKey || posthogKey.startsWith("%")) return;
 
     function getAnonId() {
       try {
@@ -1206,6 +1205,8 @@
       }).then((response) => {
         if (!response.ok) throw new Error("Track endpoint unavailable");
       }).catch(() => {
+        if (!posthogKey || posthogKey.startsWith("%")) return;
+
         const body = JSON.stringify({
           api_key: posthogKey,
           event: eventName,
